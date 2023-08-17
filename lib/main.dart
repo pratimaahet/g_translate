@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -58,25 +60,33 @@ class _HomePageState extends State<HomePage> {
   String selectedvalue = 'English';
   String selectedvalue2 = 'Thai';
   final formkey = GlobalKey<FormState>();
-  // bool isloading = false;
+  bool isloading = false;
 
   translate() async {
-    await translator
-        .translate(textController.text, from: from, to: to)
-        .then((value) {
-      data = value.text;
+    try {
+      if (formkey.currentState!.validate()) {
+        await translator
+            .translate(textController.text, from: from, to: to)
+            .then((value) {
+          data = value.text;
+          setState(() {
+            isloading = false;
+          });
+          // print(value);
+
+          // return value;
+        });
+      }
+    } on SocketException catch (e) {
+      isloading = true;
+      SnackBar snackBar = SnackBar(
+        content: Text("Internet not connected"),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 2),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
       setState(() {});
-      // print(value);
-
-      // return value;
-    });
-  }
-
-  @override
-  void dispose() {
-    // TODO: implement dispose
-    super.dispose();
-    textController.dispose();
+    }
   }
 
   speak(selvalue, text) async {
@@ -92,6 +102,14 @@ class _HomePageState extends State<HomePage> {
     // TODO: implement initState
     super.initState();
     translate();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    textController.dispose();
+    textController.dispose();
   }
 
   @override
@@ -165,14 +183,27 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(20)),
                   child: Column(
                     children: [
-                      TextFormField(
-                        controller: textController,
-                        textAlign: TextAlign.start,
-                        style: TextStyle(fontSize: 18),
-                        maxLines: null,
-                        minLines: null,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
+                      Form(
+                        key: formkey,
+                        child: TextFormField(
+                          controller: textController,
+                          textAlign: TextAlign.start,
+                          style: TextStyle(fontSize: 18),
+                          maxLines: null,
+                          minLines: null,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return "Enter some text to translate";
+                            }
+                            return null;
+                          },
+                          textInputAction: TextInputAction.none,
+                          decoration: InputDecoration(
+                              border: InputBorder.none,
+                              errorStyle: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                              )),
                         ),
                       ),
                       Row(
@@ -294,12 +325,27 @@ class _HomePageState extends State<HomePage> {
                         )
                       ],
                     )),
+                const SizedBox(
+                  height: 30,
+                ),
                 ElevatedButton(
                     onPressed: translate,
                     style: ButtonStyle(
-                        backgroundColor:
-                            MaterialStatePropertyAll(Colors.purple[700])),
-                    child: Text("Translate"))
+                      backgroundColor: MaterialStatePropertyAll(
+                        Colors.purple[700],
+                      ),
+                      fixedSize: const MaterialStatePropertyAll(
+                        Size(300, 45),
+                      ),
+                    ),
+                    child: isloading
+                        ? SizedBox(
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text("Translate"))
               ]),
         ),
       ),
